@@ -1,34 +1,38 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using InstagramUnfollowers.Models;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
-Console.WriteLine("Reading files!");
+var followingText = DeserializeJsonFile(@"C:\Users\StrahinjaŠerbula\Downloads\instagram-serlokin-2024-09-27-2rbowS70\connections\followers_and_following\following.json");
+var followersText = DeserializeJsonFile(@"C:\Users\StrahinjaŠerbula\Downloads\instagram-serlokin-2024-09-27-2rbowS70\connections\followers_and_following\followers_1.json");
 
-var following = DeserializeJsonFile<Root>("<PATH>");
-var followers = DeserializeJsonFile<List<RelationshipFollowing>>(@"<PATH>");
+var followers = JArray.Parse(followersText);
+var following = JObject.Parse(followingText)["relationships_following"] as JArray;
 
-var followerNames = followers
-    .SelectMany(x => x.StringListData)
-    .Select(y => y.Value)
-    .ToHashSet();
+// Extract the usernames from both files
+var followerUsernames = ExtractNames(followers);
+var followingUsernames = ExtractNames(following);
 
-var followingNames = following.RelationshipsFollowing
-    .SelectMany(x => x.StringListData)
-    .Select(x => x.Value)
-    .ToHashSet();
+var notFollowingBack = followingUsernames.Except(followerUsernames).ToList();
 
-var commonNames = followerNames
-    .Intersect(followingNames)
-    .ToList();
-var notFollowingNames = followerNames
-    .Except(followingNames)
-    .ToList();
+if (notFollowingBack.Count == 0)
+{
+    Console.WriteLine("Everyone you follow is following you back.");
+    return;
+}
 
-Console.WriteLine($"Not followed by {notFollowingNames.Count} people");
+Console.WriteLine("Users you follow, but who are not following you back:");
+foreach (var user in notFollowingBack)
+{
+    Console.WriteLine(user);
+}
 
-T DeserializeJsonFile<T>(string path)
+List<string> ExtractNames(JArray names)
+{
+    return names.Select(f => f["string_list_data"][0]["value"].ToString()).ToList();
+}
+
+string DeserializeJsonFile(string path)
 {
     var json = File.ReadAllText(path);
 
-    return JsonConvert.DeserializeObject<T>(json);
+    return json;
 }
